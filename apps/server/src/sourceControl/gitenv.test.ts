@@ -160,4 +160,18 @@ describe("gitenv", () => {
     );
     expect(gitenvTokenEnv(futureWorktree)?.GH_TOKEN).toBe(TOKEN);
   });
+  it("expands a leading ~ in a key to the home directory", () => {
+    const fixture = makeFixture();
+    const savedHome = process.env.HOME;
+    try {
+      // os.homedir() honours $HOME on POSIX, so point it at the fixture base
+      // (the parent of projectRoot) and key the entry with a tilde.
+      process.env.HOME = NodePath.dirname(fixture.projectRoot);
+      writeGitenv(fixture, `~/project=${TOKEN}\n`);
+      expect(gitenvTokenEnv(fixture.nestedDir)?.GH_TOKEN).toBe(TOKEN);
+    } finally {
+      if (savedHome === undefined) delete process.env.HOME;
+      else process.env.HOME = savedHome;
+    }
+  });
 });

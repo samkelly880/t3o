@@ -5,6 +5,10 @@ machine's ambient `gh` login. Upstream has no mechanism for this: every `gh` cal
 server's environment verbatim, so auth is whatever `~/.config/gh/hosts.yml` (or an ambient
 `GH_TOKEN`) says.
 
+> User-facing setup lives in [`docs/user/source-control.md`](../user/source-control.md) under
+> "Using a different GitHub identity for specific projects". This page is the contributor-facing
+> "how it works".
+
 ## The file
 
 One hand-edited file at `<stateDir>/gitenv`:
@@ -13,16 +17,21 @@ One hand-edited file at `<stateDir>/gitenv`:
 - `vp run dev` against `~/.t3`: `~/.t3/dev/gitenv`
 - a dev worktree: `<worktree>/.t3/userdata/gitenv`
 
-Format, one entry per line — the key is the absolute path of the project's main checkout:
+Format, one entry per line — the key is the project's main checkout, given as an absolute path or a
+`~`/`~/`-prefixed path (expanded against the server user's home; `~otheruser` is not expanded):
 
 ```
 # comments and blank lines are fine
 /home/me/projects/client-x=github_pat_XXXX
+~/projects/client-y=github_pat_YYYY
 ```
 
 `chmod 600` it; the server logs a one-line warning (never the value) if group/other can read it.
-Edits take effect on the next spawn — the file is re-read whenever its mtime changes, no restart
-needed. Malformed lines (no `=`, empty value, relative key) are silently skipped.
+The file is **loaded lazily, on demand** — nothing reads it at boot (server start only points the
+module at `<stateDir>/gitenv`), and `readEntries()` runs on every GitHub-touching spawn, re-reading
+whenever the file's mtime or size changes. So you can create _or_ edit the file while the server is
+running and the next action picks it up; no restart. Malformed lines (no `=`, empty value, a key
+that is neither absolute nor `~`-rooted) are silently skipped.
 
 There is no username component: `GH_TOKEN` alone authenticates `gh`, and https git pushes work
 through gh's credential helper, which honors the same variable. SSH remotes ignore tokens entirely.
