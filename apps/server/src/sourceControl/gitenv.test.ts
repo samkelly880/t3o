@@ -174,4 +174,25 @@ describe("gitenv", () => {
       else process.env.HOME = savedHome;
     }
   });
+
+  it("expands a bare ~ key to the home directory", () => {
+    const fixture = makeFixture();
+    const savedHome = process.env.HOME;
+    try {
+      // A bare `~` resolves to $HOME; point it at the project root itself.
+      process.env.HOME = fixture.projectRoot;
+      writeGitenv(fixture, `~=${TOKEN}\n`);
+      expect(gitenvTokenEnv(fixture.nestedDir)?.GH_TOKEN).toBe(TOKEN);
+    } finally {
+      if (savedHome === undefined) delete process.env.HOME;
+      else process.env.HOME = savedHome;
+    }
+  });
+
+  it("does not expand ~otheruser and skips the entry", () => {
+    const fixture = makeFixture();
+    // `~someone/...` is left untouched, stays non-absolute, and is dropped.
+    writeGitenv(fixture, `~someone/project=${TOKEN}\n`);
+    expect(gitenvTokenEnv(fixture.nestedDir)).toBeUndefined();
+  });
 });
